@@ -1,26 +1,48 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+const BASE_PROMPT = 'You are a helpful code tutor. Your job is to teach the user with simple descriptions and sample code of the concept. Respond with a guided overview of the concept in a series of messages. Do not give the user the answer directly, but guide them to find the answer themselves. If the user asks a non-programming question, politely decline to respond.';
+
 export function activate(context: vscode.ExtensionContext) {
+	console.log("activate!!", context);
+	const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, context: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken) => {
+		const prompt = BASE_PROMPT;
+		const messages = [
+			vscode.LanguageModelChatMessage.User(prompt),
+		];
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "chat2" is now active!');
+		context.history.map((h) => {
+			console.log("h!!", h);
+		});
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('chat2.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from chat2!');
-	});
+		const previousMessages = context.history.filter(
+			(h) => h instanceof vscode.ChatResponseTurn
+		);
 
-	context.subscriptions.push(disposable);
+		for (const m of previousMessages) {
+			let fullMessage = '';
+			for (const r of m.response) {
+				const mdPart = r as vscode.ChatResponseMarkdownPart;
+				fullMessage += mdPart.value.value;
+			}
+			messages.push(vscode.LanguageModelChatMessage.Assistant(fullMessage));
+			console.log("fullMessage!!", fullMessage);
+		}
+
+		messages.push(vscode.LanguageModelChatMessage.User(request.prompt));
+
+		const chatResponse = await request.model.sendRequest(messages, {}, token);
+
+		for await (const fragment of chatResponse.text) {
+			stream.markdown(fragment);
+		}
+
+		return;
+
+	};
+
+	const tutor = vscode.chat.createChatParticipant("chat2.code-tutor", handler);
+	tutor.iconPath = vscode.Uri.joinPath(context.extensionUri, 'tutor.jpeg');
+	console.log("tutor.iconPath!!", tutor.iconPath);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
