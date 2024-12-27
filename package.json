@@ -11,12 +11,15 @@
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "chat2.helloWorld",
-        "title": "Hello World"
-      }
+  "contributes":{
+    "chatParticipants": [
+    {
+        "id": "chat2.code-tutor",
+        "fullName": "Code Tutor",
+        "name": "tutor",
+        "description": "What can I teach you?",
+        "isSticky": true
+    }
     ]
   },
   "scripts": {
